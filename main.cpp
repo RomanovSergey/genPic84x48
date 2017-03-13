@@ -28,6 +28,7 @@
  */
 
 #include <QCoreApplication>
+#include <QCommandLineParser>
 #include <QString>
 #include <iostream>
 
@@ -62,10 +63,41 @@ int main(int argc, char *argv[])
 {
     qInstallMessageHandler(myMessageOutput);
     QCoreApplication a(argc, argv);
+    QCoreApplication::setApplicationName("genPic84x48");
+    QCoreApplication::setApplicationVersion("1.0");
+    QCommandLineParser parser;
 
-    cout << "Start" << endl;
+    parser.setApplicationDescription("program for convert *.png image to C code for Microcontroller");
+    parser.addHelpOption();
+    parser.addVersionOption();
+
+    // An option with a value
+    QCommandLineOption optFileName( QStringList() << "i" << "input",
+                                 "input file name (*.png) <name>.",
+                                 "name");
+    parser.addOption( optFileName );
+
+    QCommandLineOption optOutName( QStringList() << "o" << "output",
+                                 "output file name (*.c) <name>.",
+                                 "name");
+    parser.addOption( optOutName );
+
+    // Process the actual command line arguments given by the user
+    parser.process( a );
+
+    const QStringList args = parser.positionalArguments();
+    cout << "args size = " << args.size() << endl;
+    for ( int i = 0; i < args.size(); i++ ) { // for debug purpose
+        cout << "args[" << i << "]=" << args.at(i).toStdString() << endl;
+    }
+
+    QString picName = parser.value( optFileName );
+    cout << "picture name is: " << picName.toStdString() << endl;
+    QString outName = parser.value( optOutName );
+    cout << "output name is: " << outName.toStdString() << endl;
 
 
+    cout << endl;
     cout << "Exit" << endl;  //a.quit(); // х.з. как выйти
     return 0;                //a.exec();
 }
