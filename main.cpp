@@ -30,8 +30,8 @@
 #include <QCoreApplication>
 #include <QCommandLineParser>
 #include <QString>
+#include <QImage>
 #include <iostream>
-
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -73,31 +73,60 @@ int main(int argc, char *argv[])
 
     // An option with a value
     QCommandLineOption optFileName( QStringList() << "i" << "input",
-                                 "input file name (*.png) <name>.",
+                                 "input file name (*.png or *.bmp or *.jpeg ...) <name>.",
                                  "name");
     parser.addOption( optFileName );
 
     QCommandLineOption optOutName( QStringList() << "o" << "output",
                                  "output file name (*.c) <name>.",
                                  "name");
+    optOutName.setDefaultValue("default.c");
     parser.addOption( optOutName );
 
-    // Process the actual command line arguments given by the user
-    parser.process( a );
-
-    const QStringList args = parser.positionalArguments();
-    cout << "args size = " << args.size() << endl;
-    for ( int i = 0; i < args.size(); i++ ) { // for debug purpose
-        cout << "args[" << i << "]=" << args.at(i).toStdString() << endl;
-    }
+    parser.process( a ); // Process the actual command line arguments given by the user
 
     QString picName = parser.value( optFileName );
-    cout << "picture name is: " << picName.toStdString() << endl;
+    if ( picName.isEmpty() ) {
+        cout << "Please set picture's file name (-i FileName)" << endl;
+        return 0;
+    }
+    cout << "Picture name is: " << endl << "\t" << picName.toStdString() << endl;
     QString outName = parser.value( optOutName );
-    cout << "output name is: " << outName.toStdString() << endl;
+    cout << "Output name is: " << endl << "\t" << outName.toStdString() << endl;
 
+    QImage img( picName );
+    if ( img.isNull() ) {
+        cout << "Error: Can't load image file: " << picName.toStdString() << endl;
+        cout << "Exit" << endl;
+        return 0;
+    }
+    cout << "Format image: " << endl << "\t";
+    switch ( img.format() ) {
+    case QImage::Format_Invalid: // 0
+        cout << "Error: Format_Invalid" << endl;
+        return 0;
+    case QImage::Format_Mono: // 1
+        cout << "Format_Mono" << endl;
+        break;
+    case QImage::Format_MonoLSB: // 2
+        cout << "Format_MonoLSB" << endl;
+        break;
+    case QImage::Format_Indexed8: // 3
+        cout << "Format_Indexed8" << endl;
+        break;
+    case QImage::Format_RGB32: // 4
+        cout << "Format_RGB32" << endl;
+        break;
+    case QImage::Format_ARGB32: // 5
+        cout << "Format_ARGB32" << endl;
+        break;
+    default:
+        cout << img.format() << endl;
+    }
 
-    cout << endl;
-    cout << "Exit" << endl;  //a.quit(); // х.з. как выйти
+    QSize siz = img.size();
+    cout << "Image width  = " << siz.width() << endl;
+    cout << "Image height = " << siz.height() << endl;
+
     return 0;                //a.exec();
 }
