@@ -31,6 +31,7 @@
 #include <QCommandLineParser>
 #include <QString>
 #include <QImage>
+#include <QFile>
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
@@ -142,7 +143,7 @@ int main(int argc, char *argv[])
     QRgb pix;
     uint8_t yByte = 0;
     for ( int x = 0; x < DISP_X; x++ ) {
-        for ( int yb = 0; yb < DISP_Y/8; yb++ ) {
+        for ( int yb = 0; yb < DISP_Y / 8; yb++ ) {
             for ( int bit = 0; bit < 8; bit++ ) {
                 pix = img.pixel( x, yb*8 + bit );
                 if ( qGray( pix ) < 127 ) {
@@ -153,20 +154,34 @@ int main(int argc, char *argv[])
             yByte = 0;
         }
     }
-    // Выведим в текстовом режиме
-    for ( int yb = 0; yb < DISP_Y/8; yb++ ) {
+/*
+    // Выведим картинку в косноль в текстовом режиме
+    for ( int yb = 0; yb < DISP_Y / 8; yb++ ) {
         for ( int bit = 0; bit < 8; bit++ ) {
             for ( int x = 0; x < DISP_X; x++ ) {
                 if ( coor[x][yb] & (1<<bit) ) {
-                    cout << "#";
+                    cout << "##";
                 } else {
-                    cout << " ";
+                    cout << "  ";
                 }
             }
             cout << endl;
         }
     }
     cout << endl;
+*/
+
+    QString code = QString("uint8_t image[%1][%2] = {\n").arg(DISP_X).arg(DISP_Y / 8);
+    for ( int x = 0; x < DISP_X; x++ ) {
+        code += QString("  { ");
+        for ( int y = 0; y < DISP_Y / 8; y++ ) {
+            code += QString("0x%1, ").arg( coor[x][y], 2, 16, QLatin1Char( '0' ) );
+        }
+        code += QString(" },\n");
+    }
+    code += QString("};\n");
+
+    cout << code.toStdString() << endl;
 
     cout << "The end" << endl;
     return 0;                //a.exec();
