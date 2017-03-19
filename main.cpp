@@ -1,5 +1,5 @@
 /*
- * Программа genPic84x48
+ * Программа genPic84x48, реализовано на Qt 5.6.2
  *   Предназначена для генерации массива с изображением
  * для микроконтроллера, котороый рисует на LCD
  * дисплее от Nokia5110.
@@ -12,11 +12,11 @@
  * координате Y (т.е. располагается выше)
  *
  *    0\0 --------------------> 84 px (X coordinate)
- *     |       .......
+ *     |      |||||||||
  *     |       (.) (.)
  *     |     q    x    p
- *     |        <--->
- *     |
+ *     |        <mmm>
+ *     |          V
  *     V
  *    48 px
  *  (Y coordinate)
@@ -65,34 +65,37 @@ int main(int argc, char *argv[])
     QCoreApplication a(argc, argv);
     QCoreApplication::setApplicationName("genPic84x48");
     QCoreApplication::setApplicationVersion("1.0");
-    QCommandLineParser parser;
 
+    const int DISP_X = 84;
+    const int DISP_Y = 48;
+    uint8_t coor[DISP_X][DISP_Y / 8]; // буфер дисплея 84x48 пикселей (1 бит на пиксель)
+    QString picName; // имя файла с изображением
+    QString outName; // имя выходного файла - результата работы программы
+
+    QCommandLineParser parser;
     parser.setApplicationDescription("program for convert *.png image to C code for Microcontroller");
     parser.addHelpOption();
     parser.addVersionOption();
-
     // An option with a value
     QCommandLineOption optFileName( QStringList() << "i" << "input",
                                  "input file name (*.png or *.bmp or *.jpeg ...) <name>.",
                                  "name");
     parser.addOption( optFileName );
-
     QCommandLineOption optOutName( QStringList() << "o" << "output",
                                  "output file name (*.c) <name>.",
                                  "name");
     optOutName.setDefaultValue("default.c");
     parser.addOption( optOutName );
-
     parser.process( a ); // Process the actual command line arguments given by the user
-
-    QString picName = parser.value( optFileName );
+    picName = parser.value( optFileName );
     if ( picName.isEmpty() ) {
         cout << "Please set picture's file name (-i FileName)" << endl;
         return 0;
     }
     cout << "Picture name is: " << endl << "\t" << picName.toStdString() << endl;
-    QString outName = parser.value( optOutName );
+    outName = parser.value( optOutName );
     cout << "Output name is: " << endl << "\t" << outName.toStdString() << endl;
+
 
     QImage img( picName );
     if ( img.isNull() ) {
@@ -127,6 +130,44 @@ int main(int argc, char *argv[])
     QSize siz = img.size();
     cout << "Image width  = " << siz.width() << endl;
     cout << "Image height = " << siz.height() << endl;
+    if ( siz.width() != DISP_X ) {
+        cout << "Error: image width must be 84 pixels" << endl;
+        return 0;
+    }
+    if ( siz.height() != DISP_Y ) {
+        cout << "Error: image height must be 48 pixels" << endl;
+        return 0;
+    }
+    // Сформируем массив coor[x][yb]
+    QRgb pix;
+    uint8_t yByte = 0;
+    for ( int x = 0; x < DISP_X; x++ ) {
+        for ( int yb = 0; yb < DISP_Y/8; yb++ ) {
+            for ( int bit = 0; bit < 8; bit++ ) {
+                pix = img.pixel( x, yb*8 + bit );
+                if ( qGray( pix ) < 127 ) {
+                    yByte |= (1 << bit);
+                }
+            }
+            coor[x][yb] = yByte;
+            yByte = 0;
+        }
+    }
+    // Выведим в текстовом режиме
+    for ( int yb = 0; yb < DISP_Y/8; yb++ ) {
+        for ( int bit = 0; bit < 8; bit++ ) {
+            for ( int x = 0; x < DISP_X; x++ ) {
+                if ( coor[x][yb] & (1<<bit) ) {
+                    cout << "#";
+                } else {
+                    cout << " ";
+                }
+            }
+            cout << endl;
+        }
+    }
+    cout << endl;
 
+    cout << "The end" << endl;
     return 0;                //a.exec();
 }
