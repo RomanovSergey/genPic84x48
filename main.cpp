@@ -32,6 +32,7 @@
 #include <QString>
 #include <QImage>
 #include <QFile>
+#include <QTextStream>
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
@@ -91,7 +92,7 @@ int main(int argc, char *argv[])
     picName = parser.value( optFileName );
     if ( picName.isEmpty() ) {
         cout << "Please set picture's file name (-i FileName)" << endl;
-        return 0;
+        return -1;
     }
     cout << "Picture name is: " << endl << "\t" << picName.toStdString() << endl;
     outName = parser.value( optOutName );
@@ -102,13 +103,13 @@ int main(int argc, char *argv[])
     if ( img.isNull() ) {
         cout << "Error: Can't load image file: " << picName.toStdString() << endl;
         cout << "Exit" << endl;
-        return 0;
+        return -1;
     }
     cout << "Format image: " << endl << "\t";
     switch ( img.format() ) {
     case QImage::Format_Invalid: // 0
         cout << "Error: Format_Invalid" << endl;
-        return 0;
+        return -1;
     case QImage::Format_Mono: // 1
         cout << "Format_Mono" << endl;
         break;
@@ -133,11 +134,11 @@ int main(int argc, char *argv[])
     cout << "Image height = " << siz.height() << endl;
     if ( siz.width() != DISP_X ) {
         cout << "Error: image width must be 84 pixels" << endl;
-        return 0;
+        return -1;
     }
     if ( siz.height() != DISP_Y ) {
         cout << "Error: image height must be 48 pixels" << endl;
-        return 0;
+        return -1;
     }
     // Сформируем массив coor[x][yb]
     QRgb pix;
@@ -154,7 +155,7 @@ int main(int argc, char *argv[])
             yByte = 0;
         }
     }
-/*
+
     // Выведим картинку в косноль в текстовом режиме
     for ( int yb = 0; yb < DISP_Y / 8; yb++ ) {
         for ( int bit = 0; bit < 8; bit++ ) {
@@ -169,20 +170,30 @@ int main(int argc, char *argv[])
         }
     }
     cout << endl;
-*/
 
-    QString code = QString("uint8_t image[%1][%2] = {\n").arg(DISP_X).arg(DISP_Y / 8);
+    // Сформируем текстовое представление массива coor[][] на языке Си
+    QString code = QString("\nconst uint8_t img[%1][%2] = {\n").arg(DISP_X).arg(DISP_Y / 8);
     for ( int x = 0; x < DISP_X; x++ ) {
         code += QString("  { ");
         for ( int y = 0; y < DISP_Y / 8; y++ ) {
             code += QString("0x%1, ").arg( coor[x][y], 2, 16, QLatin1Char( '0' ) );
         }
-        code += QString(" },\n");
+        code += QString("},\n");
     }
     code += QString("};\n");
-
     cout << code.toStdString() << endl;
 
-    cout << "The end" << endl;
-    return 0;                //a.exec();
+    // Сохраним текстовое содержимое code в файл
+    QFile file( outName );
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        cout << "Error: Can't open file (" << outName.toStdString() << ")" << endl;
+        return -1;
+    }
+    QTextStream outputStream(&file);
+    //code.replace("\n","\r\n");
+    outputStream << code;
+    file.close();
+
+    cout << "Done" << endl;
+    return 0;
 }
