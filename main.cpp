@@ -37,6 +37,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "compressor.h"
+
 using namespace std;
 
 void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg)
@@ -179,6 +181,24 @@ int main(int argc, char *argv[])
             code += QString("0x%1, ").arg( coor[x][y], 2, 16, QLatin1Char( '0' ) );
         }
         code += QString("},\n");
+    }
+    code += QString("};\n\n");
+    //cout << code.toStdString() << endl;
+
+    // COMPRESSSSORRRR
+    uint8_t opic[84*6 + 10];
+    int ret;
+    int owrited;
+    ret = compressImg84x48( (uint8_t*)coor, opic, &owrited, sizeof(opic) );
+    if ( ret < 0 ) {
+        cout << "Error compress image, ret = " << ret << endl;
+    }
+    code += QString("const uint8_t imgCompressed[%1] = {\n    ").arg(owrited);
+    for ( int n = 0; n < owrited; n++ ) {
+        code += QString("0x%1, ").arg( opic[n], 2, 16, QLatin1Char( '0' ) );
+        if ( n%6 == 0 ) {
+            code += QString("\n    ");
+        }
     }
     code += QString("};\n");
     cout << code.toStdString() << endl;
