@@ -201,6 +201,30 @@ int main(int argc, char *argv[])
         }
     }
     code += QString("};\n");
+
+    // TEST FOR DECOMPRESSSSSS
+    bool isMatch = true;
+    uint8_t dcomp[DISP_X][DISP_Y / 8];
+    ret = decompressImv84x48( opic, (uint8_t*)dcomp, owrited );
+    if ( ret != 0 ) {
+        cout << "decompress error, ret = " << ret << endl;
+       // return ret;
+    }
+    // Сформируем текстовое представление массива coor[][] на языке Си
+    code += QString("\nconst uint8_t decompressImg[%1][%2] = {\n").arg(DISP_X).arg(DISP_Y / 8);
+    for ( int x = 0; x < DISP_X; x++ ) {
+        code += QString("  { ");
+        for ( int y = 0; y < DISP_Y / 8; y++ ) {
+            code += QString("0x%1, ").arg( dcomp[x][y], 2, 16, QLatin1Char( '0' ) );
+            if ( coor[x][y] != dcomp[x][y] ) {
+                isMatch = false;
+            }
+        }
+        code += QString("},\n");
+    }
+    code += QString("};\n\n");
+    code += (isMatch ? QString(" MATCH! ") : QString(" NO NO NO : not mutch"));
+
     cout << code.toStdString() << endl;
 
     // Сохраним текстовое содержимое code в файл
