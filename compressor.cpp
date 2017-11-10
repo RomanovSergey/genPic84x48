@@ -54,13 +54,27 @@ int compressImg84x48( const uint8_t *ipic, uint8_t *opic, int *owrited, const in
             oind++;
             if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
         } else { // follows other bytes - not reduces
-            iind++;
             cnt = 0;
             opic[oind + cnt + 1] = ipic[iind];
+            iind++;
             while ( cnt < 63 ) {
                 if ( iind >= PICSIZE ) { break; }
-                if ( (ipic[iind] == 0x00) || (ipic[iind] == 0xFF) ) {
-                    break;
+                if ( ipic[iind] == 0x00 ) {
+                    if ( (iind + 1) >= PICSIZE ) { break; }
+                    if ( ipic[iind+1] == 0x00 ) {
+                        break;
+                    }
+                    cnt++;
+                    opic[oind + cnt + 1] = ipic[iind];
+                    iind++;
+                } else if ( ipic[iind] == 0xFF ) {
+                    if ( (iind + 1) >= PICSIZE ) { break; }
+                    if ( ipic[iind+1] == 0xFF ) {
+                        break;
+                    }
+                    cnt++;
+                    opic[oind + cnt + 1] = ipic[iind];
+                    iind++;
                 } else {
                     cnt++;
                     opic[oind + cnt + 1] = ipic[iind];
