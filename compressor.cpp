@@ -26,67 +26,114 @@ int compressImg84x48( const uint8_t *ipic, uint8_t *opic, int *owrited, const in
 {
     int      iind = 0; // input index array
     int      oind = 0; // output index array
-    int      cnt;      // intermediate helper counter
+    uint8_t  rb;       // readed byte from ipic
+    uint8_t* pcmd;     // pointer to current command in opic array
 
     if ( (ipic == NULL) || (opic == NULL) ) { cout << "Error: ipic or opic NULL" << endl; return -1; }
     if ( owrited == NULL ) { cout << "Error: where is 'owrited'? a?" << endl; return -1; }
     *owrited = 0;
 
-    while ( (iind < PICSIZE) && (oind < OMAX) ) {
-        if ( ipic[iind] == 0 ) { // reduce 0x00, max 64 bytes
-            iind++;
-            cnt = 0;
-            while ( cnt < 63 ) {
-                if ( iind >= PICSIZE ) { break; }
-                if ( ipic[iind] == 0 ) { cnt++; iind++; } else {  break; }
-            }
-            opic[oind] = CMD_ZER + cnt;
-            oind++;
-            if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
-        } else if ( ipic[iind] == 0xFF ) { // reduce 0xFF, max 64 bytes
-            iind++;
-            cnt = 0;
-            while ( cnt < 63 ) {
-                if ( iind >= PICSIZE ) { break; }
-                if ( ipic[iind] == 0xFF ) { cnt++; iind++; } else {  break; }
-            }
-            opic[oind] = CMD_ONE + cnt;
-            oind++;
-            if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
-        } else { // follows other bytes - not reduces
-            cnt = 0;
-            opic[oind + cnt + 1] = ipic[iind];
-            iind++;
-            while ( cnt < 63 ) {
-                if ( iind >= PICSIZE ) { break; }
-                if ( ipic[iind] == 0x00 ) {
-                    if ( (iind + 1) >= PICSIZE ) { break; }
-                    if ( ipic[iind+1] == 0x00 ) {
-                        break;
-                    }
-                    cnt++;
-                    opic[oind + cnt + 1] = ipic[iind];
-                    iind++;
-                } else if ( ipic[iind] == 0xFF ) {
-                    if ( (iind + 1) >= PICSIZE ) { break; }
-                    if ( ipic[iind+1] == 0xFF ) {
-                        break;
-                    }
-                    cnt++;
-                    opic[oind + cnt + 1] = ipic[iind];
-                    iind++;
-                } else {
-                    cnt++;
-                    opic[oind + cnt + 1] = ipic[iind];
-                    iind++;
-                }
-            }
-            opic[oind] = CMD_FOL + cnt;
-            oind += (cnt + 2);
-            if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
-        }
+    pcmd = opic;
+    rb = ipic[iind];
+    if ( rb == 0x00 ) {
+        *pcmd = CMD_ZER;
+    } else if ( rb == 0xFF ) {
+        *pcmd = CMD_ONE;
+    } else {
+        *pcmd = CMD_FOL;
+        oind++; if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
+        opic[oind] = rb;
     }
-     *owrited = oind;
+    iind++;
+
+    do {
+        rb = ipic[iind];
+        if ( rb == 0 ) { // reduce 0x00, max 64 bytes
+            if ( (*pcmd & 0xC0) == CMD_ZER ) {
+                if ( (*pcmd & 0x3F) < 0x3F ) {
+                    (*pcmd)++;
+                } else {
+                    oind++; if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
+                    pcmd = &opic[oind];
+                    *pcmd = CMD_ZER; // new cmd, because an old is overflow
+                }
+            } else { // prev cmd not zer
+                if ( (*pcmd & 0xC0) == CMD_FOL ) { // if prev cmd follow
+                    if ( ipic[iind+1] != 0 ) { // and if next byte is not zero
+                        if ( (*pcmd & 0x3F) < 0x3F ) {
+                            (*pcmd)++;
+                            oind++; if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
+                            opic[oind] = rb;
+                        } else {
+                            oind++; if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
+                            pcmd = &opic[oind];
+                            *pcmd = CMD_FOL; // new cmd, because an old is overflow
+                            oind++; if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
+                            opic[oind] = rb;
+                        }
+                        iind++;
+                        continue;
+                    }
+                }
+                oind++; if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
+                pcmd = &opic[oind];
+                *pcmd = CMD_ZER;
+            }
+        } else if ( rb == 0xFF ) { // reduce 0xFF, max 64 bytes
+            if ( (*pcmd & 0xC0) == CMD_ONE ) {
+                if ( (*pcmd & 0x3F) < 0x3F ) {
+                    (*pcmd)++;
+                } else {
+                    oind++; if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
+                    pcmd = &opic[oind];
+                    *pcmd = CMD_ONE; // new cmd, because an old is overflow
+                }
+            } else { // prev cmd not one
+                if ( (*pcmd & 0xC0) == CMD_FOL ) { // if prev cmd follow
+                    if ( ipic[iind+1] != 0xFF ) { // and if next byte is not one
+                        if ( (*pcmd & 0x3F) < 0x3F ) {
+                            (*pcmd)++;
+                            oind++; if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
+                            opic[oind] = rb;
+                        } else {
+                            oind++; if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
+                            pcmd = &opic[oind];
+                            *pcmd = CMD_FOL; // new cmd, because an old is overflow
+                            oind++; if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
+                            opic[oind] = rb;
+                        }
+                        iind++;
+                        continue;
+                    }
+                }
+                oind++; if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
+                pcmd = &opic[oind];
+                *pcmd = CMD_ONE;
+            }
+        } else { // follows other bytes - not reduces
+            if ( (*pcmd & 0xC0) == CMD_FOL ) {
+                if ( (*pcmd & 0x3F) < 0x3F ) {
+                    (*pcmd)++;
+                    oind++; if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
+                    opic[oind] = rb;
+                } else {
+                    oind++; if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
+                    pcmd = &opic[oind];
+                    *pcmd = CMD_FOL; // new cmd, because an old is overflow
+                    oind++; if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
+                    opic[oind] = rb;
+                }
+            } else {
+                oind++; if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
+                pcmd = &opic[oind];
+                *pcmd = CMD_FOL; // new cmd, because an old is overflow
+                oind++; if ( oind >= OMAX ) { cout << "Error: opic not enough" << endl; return -2; }
+                opic[oind] = rb;
+            }
+        }
+        iind++;
+    } while ( iind < PICSIZE );
+    *owrited = ++oind;
     return 0;
 }
 

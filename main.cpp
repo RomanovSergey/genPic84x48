@@ -134,6 +134,7 @@ int main(int argc, char *argv[])
     QSize siz = img.size();
     cout << "Image width  = " << siz.width() << endl;
     cout << "Image height = " << siz.height() << endl;
+    cout << endl;
     if ( siz.width() != DISP_X ) {
         cout << "Error: image width must be 84 pixels" << endl;
         return -1;
@@ -159,7 +160,7 @@ int main(int argc, char *argv[])
     }
 
     // Выведим картинку в косноль в текстовом режиме
-    for ( int yb = 0; yb < DISP_Y / 8; yb++ ) {
+    /*for ( int yb = 0; yb < DISP_Y / 8; yb++ ) {
         for ( int bit = 0; bit < 8; bit++ ) {
             for ( int x = 0; x < DISP_X; x++ ) {
                 if ( coor[x][yb] & (1<<bit) ) {
@@ -171,7 +172,7 @@ int main(int argc, char *argv[])
             cout << endl;
         }
     }
-    cout << endl;
+    cout << endl;*/
 
     // Сформируем текстовое представление массива coor[][] на языке Си
     QString code = QString("\nconst uint8_t img[%1][%2] = {\n").arg(DISP_X).arg(DISP_Y / 8);
@@ -196,7 +197,7 @@ int main(int argc, char *argv[])
     code += QString("const uint8_t imgCompressed[%1] = {\n    ").arg(owrited);
     for ( int n = 0; n < owrited; n++ ) {
         code += QString("0x%1, ").arg( opic[n], 2, 16, QLatin1Char( '0' ) );
-        if ( n%6 == 0 ) {
+        if ( (n+1)%6 == 0 ) {
             code += QString("\n    ");
         }
     }
@@ -218,6 +219,7 @@ int main(int argc, char *argv[])
             code += QString("0x%1, ").arg( dcomp[x][y], 2, 16, QLatin1Char( '0' ) );
             if ( coor[x][y] != dcomp[x][y] ) {
                 isMatch = false;
+                cout << " match false at x=" << x << ", y=" << y << endl;
             }
         }
         code += QString("},\n");
